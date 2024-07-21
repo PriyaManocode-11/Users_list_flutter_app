@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:users_list/bloc/userBloc/user_bloc.dart';
@@ -82,7 +85,10 @@ class _UserListPageState extends State<UserListPage>
             }
           }
           return state is UsersLoadingState
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+              child: Platform.isIOS
+                  ? const CupertinoActivityIndicator()
+                  : const CircularProgressIndicator())
               : Container(
                   padding: const EdgeInsets.all(10),
                   child: Column(
