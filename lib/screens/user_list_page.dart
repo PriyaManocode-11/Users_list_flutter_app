@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:users_list/bloc/userBloc/user_bloc.dart';
@@ -12,6 +9,7 @@ import 'package:users_list/constants/strings.dart';
 import 'package:users_list/model/user_model/item_model.dart';
 import 'package:users_list/model/user_model/user_list_model.dart';
 import 'package:users_list/screens/user_details_page.dart';
+import 'package:users_list/utitlity/styles.dart';
 
 class UserListPage extends StatefulWidget {
   const UserListPage({super.key});
@@ -20,22 +18,36 @@ class UserListPage extends StatefulWidget {
   State<UserListPage> createState() => _UserListPageState();
 }
 
-class _UserListPageState extends State<UserListPage> {
+class _UserListPageState extends State<UserListPage>
+    with SingleTickerProviderStateMixin {
   UsersList? usersList;
   UsersBloc? usersBloc;
   List<Item> footerArr = [];
   int page = 1;
   bool kisweb = false;
-
+  late AnimationController _animationController;
 
   @override
   void initState() {
+    super.initState();
     usersBloc = BlocProvider.of<UsersBloc>(context);
     fetchUserList();
-    super.initState();
+    _animationController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+        lowerBound: 0,
+        upperBound: 1);
+
+    _animationController.forward();
   }
 
-  fetchUserList() {
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void fetchUserList() {
     var body = {ConstantParams.page: page};
     usersBloc!
       ..queryParam = body
@@ -46,7 +58,10 @@ class _UserListPageState extends State<UserListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("User List"),
+        title: Text(
+          "User List",
+          style: textStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: BlocBuilder<UsersBloc, UsersState>(
@@ -57,45 +72,63 @@ class _UserListPageState extends State<UserListPage> {
             if (page != 0) {
               int totalPage = state.usersListState.totalPages ?? 0;
               footerArr = List<Item>.generate(
-                  totalPage,
-                  (index) => Item(
-                      id: index + 1,
-                      name: "${index + 1}",
-                      isClicked: index == 0));
+                totalPage,
+                (index) => Item(
+                  id: index + 1,
+                  name: "${index + 1}",
+                  isClicked: index == page - 1,
+                ),
+              );
             }
           }
           return state is UsersLoadingState
-              ? const Center(
-                  child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator())
               : Container(
                   padding: const EdgeInsets.all(10),
                   child: Column(
                     children: [
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.7,
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: (usersList?.data ?? []).length,
-                          itemBuilder: (ctxt, index) {
-                            return Hero(
-                              tag: "hai",
-                              child: ListTile(
+                        child: AnimatedBuilder(
+                          animation: _animationController,
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: (usersList?.data ?? []).length,
+                            itemBuilder: (ctxt, index) {
+                              return ListTile(
                                 onTap: () {
                                   Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (context) => const UserDetailsPage(),
+                                    builder: (context) =>
+                                        const UserDetailsPage(),
                                   ));
                                   usersBloc!
                                     ..userId = "${usersList?.data?[index].id}"
                                     ..add(UserEvents.updateState);
                                 },
                                 leading: Image.network(
-                                    usersList?.data?[index].avatar ?? ''),
+                                  usersList?.data?[index].avatar ?? '',
+                                ),
                                 title: Text(
-                                    '${usersList?.data?[index].firstName} ${usersList?.data?[index].lastName}'),
-                                subtitle:
-                                    Text(usersList?.data?[index].email ?? ''),
-                              ),
-                            );
+                                  '${usersList?.data?[index].firstName} ${usersList?.data?[index].lastName}',
+                                  style: textStyle(),
+                                ),
+                                subtitle: Text(
+                                  usersList?.data?[index].email ?? '',
+                                  style: textStyle(
+                                      fontSize: 12, textColor: Colors.grey),
+                                ),
+                              );
+                            },
+                          ),
+                          builder: (conxt, child) {
+                            return SlideTransition(
+                                position: Tween(
+                                        begin: const Offset(0, 0.3),
+                                        end: const Offset(0, 0))
+                                    .animate(CurvedAnimation(
+                                        parent: _animationController,
+                                        curve: Curves.bounceInOut)),
+                                child: child);
                           },
                         ),
                       ),
@@ -113,11 +146,11 @@ class _UserListPageState extends State<UserListPage> {
     );
   }
 
-  stepperIndexUpdate(String type, int index) {
+  void stepperIndexUpdate(String type, int index) {
     int selectedIndex = footerArr.indexWhere((element) => element.isClicked);
-    footerArr.asMap().forEach((key, value) {
-      footerArr[key].isClicked = false;
-    });
+    for (var element in footerArr) {
+      element.isClicked = false;
+    }
 
     int currentIndex = 0;
     if (type == Strings.left) {
@@ -130,21 +163,12 @@ class _UserListPageState extends State<UserListPage> {
       currentIndex = index;
     }
     footerArr[currentIndex].isClicked = true;
-    if (page != (currentIndex)) {
-      page = currentIndex;
+
+    int newPage = currentIndex + 1;
+    if (page != newPage) {
+      page = newPage;
+      fetchUserList();
     }
     usersBloc!.add(UserEvents.updateState);
-  }
-
-  isWeb() {
-    try {
-      if (Platform.isAndroid || Platform.isIOS) {
-        kisweb = false;
-      } else {
-        kisweb = true;
-      }
-    } catch (e) {
-      kisweb = true;
-    }
   }
 }

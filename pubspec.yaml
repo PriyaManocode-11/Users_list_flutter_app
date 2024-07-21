@@ -79,16 +79,22 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
+  # flutter:
   fonts:
     - family: SFPro
       fonts:
-        - asset: fonts/SFPRODISPLAYMEDIUM.OTF
+        - asset: fonts/SFPRODISPLAYREGULAR.OTF
+        # Uncomment the following lines if you have more font styles/weights
+        # - asset: fonts/SFPRODISPLAYBOLD.OTF
         #   weight: 700
+        # - asset: fonts/SFPRODISPLAYITALIC.OTF
         #   style: italic
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
+    # Uncomment the following block if you have another font family like TrajanPro
+    # - family: TrajanPro
+    #   fonts:
+  #     - asset: fonts/TrajanPro.ttf
+  #     - asset: fonts/TrajanPro_Bold.ttf
+  #       weight: 700
+
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages

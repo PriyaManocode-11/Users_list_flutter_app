@@ -1,9 +1,7 @@
 import 'dart:collection';
-
 import 'package:dio/dio.dart';
 import 'package:users_list/constants/constant_params.dart';
 import 'package:users_list/constants/end_points.dart';
-import 'package:users_list/screens/error_screen.dart';
 
 class ApiClient {
   static const _baseUrl = EndPointsUrl.baseUrl;
@@ -60,7 +58,6 @@ class ApiClient {
       return createResponse; //response.data;
     } on DioException catch (e) {
       if(e.response == null || e.response?.statusCode == 401){
-        const ErrorScreen();
         return HashMap();
       } else {
         return e.response?.data as Map<String, dynamic>;
