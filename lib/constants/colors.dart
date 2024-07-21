@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
-class ColorCode{
-  static const Color kPurple = Color.fromARGB(255, 147, 110, 212);
+import 'package:flutter/cupertino.dart';
+
+class ColorCode {
+  static Color kPurple = Platform.isIOS
+      ? CupertinoColors.systemPurple
+      : const Color.fromARGB(255, 147, 110, 212);
 }

@@ -1,8 +1,8 @@
 import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:universal_io/io.dart';
 import 'package:users_list/bloc/userBloc/user_bloc.dart';
 import 'package:users_list/bloc/userBloc/user_events.dart';
 import 'package:users_list/bloc/userBloc/user_state.dart';
@@ -21,33 +21,18 @@ class UserListPage extends StatefulWidget {
   State<UserListPage> createState() => _UserListPageState();
 }
 
-class _UserListPageState extends State<UserListPage>
-    with SingleTickerProviderStateMixin {
+class _UserListPageState extends State<UserListPage> {
   UsersList? usersList;
   UsersBloc? usersBloc;
   List<Item> footerArr = [];
   int page = 1;
   bool kisweb = false;
-  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
     usersBloc = BlocProvider.of<UsersBloc>(context);
     fetchUserList();
-    _animationController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 300),
-        lowerBound: 0,
-        upperBound: 1);
-
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 
   void fetchUserList() {
@@ -59,95 +44,141 @@ class _UserListPageState extends State<UserListPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "User List",
-          style: textStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: BlocBuilder<UsersBloc, UsersState>(
-        builder: (BuildContext context, UsersState state) {
-          if (state is UsersListState) {
-            usersList = state.usersListState;
-            page = state.usersListState.page!;
-            if (page != 0) {
-              int totalPage = state.usersListState.totalPages ?? 0;
-              footerArr = List<Item>.generate(
-                totalPage,
-                (index) => Item(
-                  id: index + 1,
-                  name: "${index + 1}",
-                  isClicked: index == page - 1,
+    return Platform.isIOS
+        ? CupertinoPageScaffold(
+            navigationBar: CupertinoNavigationBar(
+              middle: Text(
+                "User List",
+                style: textStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            child: _buildUserList(),
+          )
+        : Scaffold(
+            appBar: AppBar(
+              title: Text(
+                "User List",
+                style: textStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              centerTitle: true,
+            ),
+            body: _buildUserList(),
+          );
+  }
+
+  BlocBuilder<UsersBloc, UsersState> _buildUserList() {
+    return BlocBuilder<UsersBloc, UsersState>(
+      builder: (BuildContext context, UsersState state) {
+        if (state is UsersListState) {
+          usersList = state.usersListState;
+          page = state.usersListState.page!;
+          if (page != 0) {
+            int totalPage = state.usersListState.totalPages ?? 0;
+            footerArr = List<Item>.generate(
+              totalPage,
+              (index) => Item(
+                id: index + 1,
+                name: "${index + 1}",
+                isClicked: index == page - 1,
+              ),
+            );
+          }
+        }
+        return state is UsersLoadingState
+            ? Center(
+                child: Platform.isIOS
+                    ? const CupertinoActivityIndicator()
+                    : const CircularProgressIndicator())
+            : Container(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.7,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: (usersList?.data ?? []).length,
+                        itemBuilder: (ctxt, index) {
+                          return Platform.isIOS
+                              ? CupertinoListTile(
+                                  onTap: () {
+                                    CupertinoPageRoute(
+                                      builder: (ctcxt) =>
+                                          const UserDetailsPage(),
+                                    );
+                                    usersBloc!
+                                      ..userId = "${usersList?.data?[index].id}"
+                                      ..add(UserEvents.updateState);
+                                  },
+                                  title: Text(
+                                    '${usersList?.data?[index].firstName} ${usersList?.data?[index].lastName}',
+                                    style: textStyle(),
+                                  ),
+                                  subtitle: Text(
+                                      usersList?.data?[index].email ?? '',
+                                      style: textStyle(
+                                          fontSize: 12,
+                                          textColor:
+                                              CupertinoColors.systemGrey)),
+                                  leading: _buildUrlImage(
+                                      usersList?.data?[index].avatar ?? ''),
+                                )
+                              : ListTile(
+                                  onTap: () {
+                                    Navigator.of(context)
+                                        .push(MaterialPageRoute(
+                                      builder: (cxt) => const UserDetailsPage(),
+                                    ));
+                                    usersBloc!
+                                      ..userId = "${usersList?.data?[index].id}"
+                                      ..add(UserEvents.updateState);
+                                  },
+                                  leading: Image.network(
+                                    usersList?.data?[index].avatar ?? '',
+                                  ),
+                                  title: Text(
+                                    '${usersList?.data?[index].firstName} ${usersList?.data?[index].lastName}',
+                                    style: textStyle(),
+                                  ),
+                                  subtitle: Text(
+                                      usersList?.data?[index].email ?? '',
+                                      style: textStyle(
+                                          fontSize: 12,
+                                          textColor: Colors.grey)),
+                                );
+                        },
+                      ),
+                    ),
+                    BottomPaginationWidget(
+                      footerArr,
+                      stepperIndexClick: (item) {
+                        stepperIndexUpdate(item.name, item.id);
+                      },
+                    )
+                  ],
                 ),
               );
-            }
-          }
-          return state is UsersLoadingState
-              ? Center(
-              child: Platform.isIOS
-                  ? const CupertinoActivityIndicator()
-                  : const CircularProgressIndicator())
-              : Container(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.7,
-                        child: AnimatedBuilder(
-                          animation: _animationController,
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: (usersList?.data ?? []).length,
-                            itemBuilder: (ctxt, index) {
-                              return ListTile(
-                                onTap: () {
-                                  Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (context) =>
-                                        const UserDetailsPage(),
-                                  ));
-                                  usersBloc!
-                                    ..userId = "${usersList?.data?[index].id}"
-                                    ..add(UserEvents.updateState);
-                                },
-                                leading: Image.network(
-                                  usersList?.data?[index].avatar ?? '',
-                                ),
-                                title: Text(
-                                  '${usersList?.data?[index].firstName} ${usersList?.data?[index].lastName}',
-                                  style: textStyle(),
-                                ),
-                                subtitle: Text(
-                                  usersList?.data?[index].email ?? '',
-                                  style: textStyle(
-                                      fontSize: 12, textColor: Colors.grey),
-                                ),
-                              );
-                            },
-                          ),
-                          builder: (conxt, child) {
-                            return SlideTransition(
-                                position: Tween(
-                                        begin: const Offset(0, 0.3),
-                                        end: const Offset(0, 0))
-                                    .animate(CurvedAnimation(
-                                        parent: _animationController,
-                                        curve: Curves.bounceInOut)),
-                                child: child);
-                          },
-                        ),
-                      ),
-                      BottomPaginationWidget(
-                        footerArr,
-                        stepperIndexClick: (item) {
-                          stepperIndexUpdate(item.name, item.id);
-                        },
-                      )
-                    ],
-                  ),
-                );
-        },
+      },
+    );
+  }
+
+  _buildUrlImage(String imageUrl) {
+    return Container(
+      width: 200,
+      height: 200,
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        color: CupertinoColors.activeBlue,
+        image: DecorationImage(
+          image: NetworkImage(
+            imageUrl,
+          ),
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
